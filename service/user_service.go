@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"time"
 
 	"tow-management-system-api/model"
@@ -32,9 +31,7 @@ func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	if user == nil {
 		return fmt.Errorf("user payload is nil")
 	}
-	// Ensure ID (string pointer) and createdDate (int64) are set
-	id := uuid.NewString()
-	user.ID = &id
+
 	user.CreatedDate = time.Now().UTC().Unix()
 
 	if err := s.userRepository.Create(ctx, user); err != nil {
@@ -48,10 +45,6 @@ func (s *UserService) UpdateUser(ctx context.Context, userId *string, user *mode
 
 	if user == nil {
 		return fmt.Errorf("user payload is nil")
-	}
-
-	if userId == nil || *userId == "" {
-		return fmt.Errorf("missing user id")
 	}
 
 	if err := s.userRepository.Update(ctx, *userId, user); err != nil {
