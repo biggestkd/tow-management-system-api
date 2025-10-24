@@ -78,6 +78,7 @@ func (h *UserHandler) PutUser(ctx *gin.Context) {
 	}
 
 	if err := h.userService.UpdateUser(ctx, &userID, &body); err != nil {
+		log.Println(err.Error())
 		ctx.String(http.StatusBadRequest, "Something went wrong")
 		return
 	}

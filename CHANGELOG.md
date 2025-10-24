@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.1.1
+* Add logs to user handler method
+* Remove user id overwrite in user service CreateUser
+
 ## 0.1.0
 * Setup API core components (repository, service, handlers, models for users/company schema)
 * Install github.com/google/uuid v1.6.0
