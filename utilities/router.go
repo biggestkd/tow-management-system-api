@@ -41,7 +41,8 @@ func (r *Router) InitializeRouter() *gin.Engine {
 	engine.PUT("/user/:userId", r.userHandler.PutUser) // Update a user
 
 	// ==== Company routes ====
-	engine.POST("/company", r.companyHandler.PostCompany) // Create a companyHandler (requires userId)
+	engine.POST("/company", r.companyHandler.PostCompany)   // Create a company
+	engine.GET("/company/:id", r.companyHandler.GetCompany) // Get a company
 
 	return engine
 }

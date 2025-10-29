@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.2.0
+* Update Company API
+
 ## 0.1.1
 * Add logs to user handler method
 * Remove user id overwrite in user service CreateUser
