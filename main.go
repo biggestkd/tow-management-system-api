@@ -29,17 +29,22 @@ func buildApp() (*gin.Engine, error) {
 	// 2) Repositories
 	userRepo := db.CreateUserRepository()
 	companyRepo := db.CreateCompanyRepository()
+	towRepo := db.CreateTowRepository()
 
 	// 3) Services
 	userSvc := service.NewUserServiceWithMongo(userRepo)
 	companySvc := service.NewCompanyService(companyRepo)
+	towSvc := service.NewTowService(towRepo)
+	metricSvc := service.NewMetricService(towRepo)
 
 	// 4) Handlers
 	userHandler := handler.NewUserHandler(userSvc)
 	companyHandler := handler.NewCompanyHandler(companySvc)
+	towHandler := handler.NewTowHandler(towSvc)
+	metricHandler := handler.NewMetricHandler(metricSvc)
 
 	// 5) Router
-	router := utilities.NewRouter(userHandler, companyHandler)
+	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler)
 	engine := router.InitializeRouter()
 	return engine, nil
 }
