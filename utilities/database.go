@@ -73,6 +73,7 @@ func (d *Database) DB() *mongo.Database {
 const (
 	UserCollection    = "users"
 	CompanyCollection = "companies"
+	TowCollection     = "tows"
 )
 
 // CreateUserRepository returns a Mongo-backed user repository.
@@ -85,4 +86,10 @@ func (d *Database) CreateUserRepository() *repository.UserMongoRepository {
 func (d *Database) CreateCompanyRepository() *repository.CompanyMongoRepository {
 	coll := CompanyCollection
 	return repository.NewMongoCompanyRepository(d.db, coll)
+}
+
+// CreateTowRepository returns a tow repository.
+func (d *Database) CreateTowRepository() *repository.TowMongoRepository {
+	coll := TowCollection
+	return repository.NewMongoTowRepository(d.db, coll)
 }

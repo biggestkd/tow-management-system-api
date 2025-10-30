@@ -2,6 +2,7 @@
 
 ## 0.2.0
 * Update Company API
+* Create Tow API
 
 ## 0.1.1
 * Add logs to user handler method
