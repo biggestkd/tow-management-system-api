@@ -9,7 +9,7 @@ type Tow struct {
 	Attachments    []string `json:"attachments,omitempty" bson:"attachments,omitempty"`
 	Notes          *string  `json:"notes,omitempty" bson:"notes,omitempty"`
 	History        []string `json:"history,omitempty" bson:"history,omitempty"`
-	Status         *string  `json:"status,omitempty" bson:"status,omitempty"`
+	Status         *string  `json:"status,omitempty" bson:"status,omitempty"` // pending, accepted, dispatched, arrived_pickup, in_transit, completed, cancelled
 	CompanyID      *string  `json:"companyId,omitempty" bson:"companyId,omitempty"`
 	CreatedAt      *int64   `json:"createdAt,omitempty" bson:"createdAt,omitempty"`
 	Price          *int     `json:"price,omitempty" bson:"price,omitempty"`

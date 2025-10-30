@@ -11,10 +11,11 @@ type Router struct {
 	userHandler    *handler.UserHandler
 	companyHandler *handler.CompanyHandler
 	towHandler     *handler.TowHandler
+	metricHandler  *handler.MetricHandler
 }
 
-func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler) *Router {
-	return &Router{userHandler: user, companyHandler: company, towHandler: towHandler}
+func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler) *Router {
+	return &Router{userHandler: user, companyHandler: company, towHandler: towHandler, metricHandler: metricHandler}
 }
 
 // InitializeRouter builds the gin.Engine and registers routes/middleware.
@@ -47,6 +48,9 @@ func (r *Router) InitializeRouter() *gin.Engine {
 
 	// ==== Tow routes ====
 	engine.GET("/tows/company/:companyId", r.towHandler.GetTowHistory) // Get a company
+
+	// ==== Metric routes ====
+	engine.GET("/metrics/:companyId", r.metricHandler.GetCompanyMetrics) // Get company metrics
 
 	return engine
 }
