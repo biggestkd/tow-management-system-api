@@ -48,6 +48,7 @@ func (r *Router) InitializeRouter() *gin.Engine {
 
 	// ==== Tow routes ====
 	engine.GET("/tows/company/:companyId", r.towHandler.GetTowHistory) // Get tow history
+	engine.PUT("/tows/:towId", r.towHandler.PostUpdateTow)             // Update tow
 
 	// ==== Metric routes ====
 	engine.GET("/metrics/:companyId", r.metricHandler.GetCompanyMetrics) // Get metrics

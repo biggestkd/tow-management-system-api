@@ -10,6 +10,7 @@ import (
 type TowRepository interface {
 	Create(ctx context.Context, item *model.Tow) error
 	Find(ctx context.Context, filterModel *model.Tow) ([]*model.Tow, error)
+	Update(ctx context.Context, id string, updateData *model.Tow) error
 }
 
 // TowService defines business logic for the Tow entity.
@@ -39,4 +40,19 @@ func (s *TowService) FindTowsByCompanyId(ctx context.Context, companyId string) 
 	}
 
 	return tows, nil
+}
+
+// UpdateTow updates a tow by its ID with the provided partial fields.
+func (s *TowService) UpdateTow(ctx context.Context, towId string, update *model.Tow) error {
+	if towId == "" {
+		return fmt.Errorf("tow id is required")
+	}
+	if update == nil {
+		return fmt.Errorf("update body is required")
+	}
+
+	if err := s.towRepository.Update(ctx, towId, update); err != nil {
+		return fmt.Errorf("update tow failed: %w", err)
+	}
+	return nil
 }
