@@ -2,15 +2,19 @@ package handler
 
 import (
 	"context"
+	"log"
+	"net/http"
+	"strings"
+	"tow-management-system-api/model"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"net/http"
-	"tow-management-system-api/model"
 )
 
 type CompanyService interface {
 	CreateCompany(ctx context.Context, company *model.Company) (*model.Company, error)
 	FindCompanyById(ctx context.Context, id string) (*model.Company, error)
+	UpdateCompany(ctx context.Context, companyId string, update *model.Company) error
 }
 
 type CompanyHandler struct {
@@ -68,4 +72,34 @@ func (h *CompanyHandler) GetCompany(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, company)
+}
+
+// PutCompany PUT /company/:id
+// Request BODY: partial Company (only fields to change)
+// Response: 204 | 400 invalid request | 404 not found
+func (h *CompanyHandler) PutCompany(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.String(http.StatusBadRequest, "company id is required")
+		return
+	}
+
+	var body model.Company
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.String(http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if err := h.companyService.UpdateCompany(c.Request.Context(), id, &body); err != nil {
+		log.Println(err.Error())
+		// Check if it's a "not found" error
+		if strings.Contains(err.Error(), "not found") {
+			c.String(http.StatusNotFound, "company not found")
+			return
+		}
+		c.String(http.StatusBadRequest, "something went wrong")
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
