@@ -79,6 +79,9 @@ func (r *CompanyMongoRepository) Update(ctx context.Context, id string, updateDa
 		return fmt.Errorf("failed to unmarshal company update fields: %w", err)
 	}
 
+	// Never allow updating the _id via $set
+	delete(updateFields, "_id")
+
 	update := bson.M{
 		"$set": updateFields,
 	}

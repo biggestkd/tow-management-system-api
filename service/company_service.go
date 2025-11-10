@@ -3,16 +3,18 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"regexp"
 	"strings"
 	"time"
 	"tow-management-system-api/model"
+
+	"github.com/google/uuid"
 )
 
 type CompanyRepository interface {
 	Create(ctx context.Context, item *model.Company) error
 	Find(ctx context.Context, filterModel *model.Company) ([]*model.Company, error)
+	Update(ctx context.Context, id string, updateData *model.Company) error
 }
 
 type CompanyService struct {
@@ -60,6 +62,21 @@ func (s *CompanyService) FindCompanyById(ctx context.Context, id string) (*model
 	}
 
 	return company[0], nil
+}
+
+// UpdateCompany updates a company by its ID with the provided partial fields.
+func (s *CompanyService) UpdateCompany(ctx context.Context, companyId string, update *model.Company) error {
+	if companyId == "" {
+		return fmt.Errorf("company id is required")
+	}
+	if update == nil {
+		return fmt.Errorf("update body is required")
+	}
+
+	if err := s.companyRepository.Update(ctx, companyId, update); err != nil {
+		return fmt.Errorf("update company failed: %w", err)
+	}
+	return nil
 }
 
 func generateSchedulingLinkSlug(companyName *string) *string {

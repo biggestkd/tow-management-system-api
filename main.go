@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
 	"log"
 	"log/slog"
 	"os"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -30,21 +31,24 @@ func buildApp() (*gin.Engine, error) {
 	userRepo := db.CreateUserRepository()
 	companyRepo := db.CreateCompanyRepository()
 	towRepo := db.CreateTowRepository()
+	priceRepo := db.CreatePriceRepository()
 
 	// 3) Services
 	userSvc := service.NewUserServiceWithMongo(userRepo)
 	companySvc := service.NewCompanyService(companyRepo)
 	towSvc := service.NewTowService(towRepo)
 	metricSvc := service.NewMetricService(towRepo)
+	priceSvc := service.NewPriceService(priceRepo)
 
 	// 4) Handlers
 	userHandler := handler.NewUserHandler(userSvc)
 	companyHandler := handler.NewCompanyHandler(companySvc)
 	towHandler := handler.NewTowHandler(towSvc)
 	metricHandler := handler.NewMetricHandler(metricSvc)
+	priceHandler := handler.NewPriceHandler(priceSvc)
 
 	// 5) Router
-	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler)
+	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler)
 	engine := router.InitializeRouter()
 	return engine, nil
 }
