@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.3.0
+* Create Pricing endpoints
+
 ## 0.2.0
 * Update Company API
 * Create Tow API
