@@ -13,10 +13,18 @@ type Router struct {
 	towHandler     *handler.TowHandler
 	metricHandler  *handler.MetricHandler
 	priceHandler   *handler.PriceHandler
+	paymentHandler *handler.PaymentHandler
 }
 
-func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler, priceHandler *handler.PriceHandler) *Router {
-	return &Router{userHandler: user, companyHandler: company, towHandler: towHandler, metricHandler: metricHandler, priceHandler: priceHandler}
+func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler, priceHandler *handler.PriceHandler, paymentHandler *handler.PaymentHandler) *Router {
+	return &Router{
+		userHandler:    user,
+		companyHandler: company,
+		towHandler:     towHandler,
+		metricHandler:  metricHandler,
+		priceHandler:   priceHandler,
+		paymentHandler: paymentHandler,
+	}
 }
 
 // InitializeRouter builds the gin.Engine and registers routes/middleware.
@@ -50,7 +58,8 @@ func (r *Router) InitializeRouter() *gin.Engine {
 
 	// ==== Tow routes ====
 	engine.GET("/tows/company/:companyId", r.towHandler.GetTowHistory) // Get tow history
-	engine.PUT("/tows/:towId", r.towHandler.PostUpdateTow)             // Update tow
+	engine.POST("/tows/:companyId", r.towHandler.PostTow)              // Create tow
+	engine.PUT("/tows/:towId", r.towHandler.PutUpdateTow)              // Update tow
 
 	// ==== Metric routes ====
 	engine.GET("/metrics/:companyId", r.metricHandler.GetCompanyMetrics) // Get metrics
@@ -58,6 +67,9 @@ func (r *Router) InitializeRouter() *gin.Engine {
 	// ==== Price routes ====
 	engine.GET("/pricing/company/:companyId", r.priceHandler.GetPrices) // Get prices by company
 	engine.PUT("/pricing", r.priceHandler.PutPrices)                    // Set prices
+
+	// ==== Payment routes ====
+	engine.POST("/payment/webhook", r.paymentHandler.PostPaymentWebhook) // Handle payment webhooks
 
 	return engine
 }
