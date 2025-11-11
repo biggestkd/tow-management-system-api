@@ -57,15 +57,15 @@ func (h *TowHandler) PostTow(c *gin.Context) {
 		return
 	}
 
-	var body model.Tow
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.String(http.StatusBadRequest, "invalid JSON body")
+	var towBody model.Tow
+	if err := c.ShouldBindJSON(&towBody); err != nil {
+		c.String(http.StatusBadRequest, "invalid JSON towBody")
 		return
 	}
 
-	body.CompanyID = &companyId
+	towBody.CompanyID = &companyId
 
-	tow, err := h.towService.ScheduleTow(c.Request.Context(), &body)
+	tow, err := h.towService.ScheduleTow(c.Request.Context(), &towBody)
 	if err != nil {
 		log.Println(err.Error())
 		c.String(http.StatusBadRequest, "something went wrong")

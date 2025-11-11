@@ -20,15 +20,24 @@ func NewPaymentService(towRepo TowRepository) *PaymentService {
 }
 
 // UpdateTowPayment updates the payment status and reference for a tow using the underlying repository.
-func (s *PaymentService) UpdateTowPayment(ctx context.Context, towID string, paymentStatus string, paymentReference string) error {
-	if towID == "" {
-		return fmt.Errorf("tow id is required")
-	}
+func (s *PaymentService) UpdateTowPayment(ctx context.Context, paymentStatus string, paymentReference string) error {
+
 	if paymentStatus == "" {
 		return fmt.Errorf("payment status is required")
 	}
 
+	filter := &model.Tow{
+		PaymentReference: &paymentReference,
+	}
+
+	tow, err := s.towRepository.Find(ctx, filter)
+
+	if err != nil || len(tow) > 1 {
+		return fmt.Errorf("failed to search for tow: %w", err)
+	}
+
 	status := paymentStatus
+
 	update := &model.Tow{
 		PaymentStatus: &status,
 	}
@@ -38,7 +47,7 @@ func (s *PaymentService) UpdateTowPayment(ctx context.Context, towID string, pay
 		update.PaymentReference = &reference
 	}
 
-	if err := s.towRepository.Update(ctx, towID, update); err != nil {
+	if err := s.towRepository.Update(ctx, *tow[0].ID, update); err != nil {
 		return fmt.Errorf("failed to update tow payment: %w", err)
 	}
 

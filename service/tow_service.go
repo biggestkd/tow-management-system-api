@@ -3,10 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"time"
-
 	"tow-management-system-api/model"
-	"tow-management-system-api/repository"
 	"tow-management-system-api/utilities"
 )
 
@@ -16,18 +15,18 @@ type TowRepository interface {
 	Update(ctx context.Context, id string, updateData *model.Tow) error
 }
 
-type PriceRepository interface {
+type PriceRepositoryForTowService interface {
 	Find(ctx context.Context, filterModel *model.Price) ([]*model.Price, error)
 }
 
 // TowService defines business logic for the Tow entity.
 type TowService struct {
 	towRepository   TowRepository
-	priceRepository PriceRepository
+	priceRepository PriceRepositoryForTowService
 }
 
 // NewTowService creates a new TowService instance.
-func NewTowService(towRepo TowRepository, priceRepo PriceRepository) *TowService {
+func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService) *TowService {
 	return &TowService{
 		towRepository:   towRepo,
 		priceRepository: priceRepo,
@@ -47,11 +46,13 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
 		CompanyID: towRequest.CompanyID,
 	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pricing information: %w", err)
 	}
 
 	total, err := utilities.CalculateTowPrice(pricingInfo, towRequest)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate tow price: %w", err)
 	}
@@ -59,6 +60,7 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 	towRequest.Price = &total
 
 	invoiceID, err := utilities.CreatePayableItem(total)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create payable item: %w", err)
 	}
@@ -66,11 +68,10 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 	paymentStatus := "unpaid"
 	towRequest.PaymentStatus = &paymentStatus
 	towRequest.PaymentReference = &invoiceID
-
-	if towRequest.CreatedAt == nil {
-		now := time.Now().UTC().Unix()
-		towRequest.CreatedAt = &now
-	}
+	now := time.Now().UTC().Unix()
+	towRequest.CreatedAt = &now
+	id := uuid.NewString()
+	towRequest.ID = &id
 
 	if err := s.towRepository.Create(ctx, towRequest); err != nil {
 		return nil, fmt.Errorf("failed to save tow: %w", err)
