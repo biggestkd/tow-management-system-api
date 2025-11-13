@@ -10,7 +10,7 @@ import (
 
 // PaymentService defines the contract required for payment-related operations.
 type PaymentService interface {
-	UpdateTowPayment(ctx context.Context, paymentStatus string, paymentReference string) error
+	UpdateTowPaymentStatus(ctx context.Context, paymentStatus string, paymentReference string) error
 }
 
 // PaymentHandler handles payment-related HTTP endpoints.
@@ -42,7 +42,7 @@ func (h *PaymentHandler) PostStripeWebhook(c *gin.Context) {
 		return
 	}
 
-	if err := h.paymentService.UpdateTowPayment(c.Request.Context(), payload.PaymentStatus, payload.InvoiceID); err != nil {
+	if err := h.paymentService.UpdateTowPaymentStatus(c.Request.Context(), payload.PaymentStatus, payload.InvoiceID); err != nil {
 		log.Println(err.Error())
 		c.String(http.StatusInternalServerError, "failed to update payment")
 		return

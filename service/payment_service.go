@@ -20,7 +20,7 @@ func NewPaymentService(towRepo TowRepository) *PaymentService {
 }
 
 // UpdateTowPayment updates the payment status and reference for a tow using the underlying repository.
-func (s *PaymentService) UpdateTowPayment(ctx context.Context, paymentStatus string, paymentReference string) error {
+func (s *PaymentService) UpdateTowPaymentStatus(ctx context.Context, paymentStatus string, paymentReference string) error {
 
 	if paymentStatus == "" {
 		return fmt.Errorf("payment status is required")
