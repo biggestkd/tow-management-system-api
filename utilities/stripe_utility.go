@@ -14,13 +14,6 @@ type StripeUtility struct {
 	client *stripe.Client
 }
 
-// InvoiceItem represents an item to be added to an invoice
-type InvoiceItem struct {
-	Description string
-	Amount      int64 // Amount in cents
-	Quantity    int64 // Quantity of the item
-}
-
 // NewStripeClient initializes stripe client using STRIPE_API_KEY and returns a singleton.
 func NewStripeClient() (*StripeUtility, error) {
 	apiKey := os.Getenv("STRIPE_API_KEY")
