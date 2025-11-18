@@ -33,10 +33,17 @@ func buildApp() (*gin.Engine, error) {
 	towRepo := db.CreateTowRepository()
 	priceRepo := db.CreatePriceRepository()
 
+	// 2.5) Stripe Client
+	stripeClient, err := utilities.NewStripeClient()
+	if err != nil {
+		return nil, err
+	}
+
 	// 3) Services
 	userSvc := service.NewUserServiceWithMongo(userRepo)
-	companySvc := service.NewCompanyService(companyRepo)
-	towSvc := service.NewTowService(towRepo)
+	companySvc := service.NewCompanyService(companyRepo, stripeClient)
+	towSvc := service.NewTowService(towRepo, priceRepo)
+	paymentSvc := service.NewPaymentService(towRepo, companyRepo, stripeClient)
 	metricSvc := service.NewMetricService(towRepo)
 	priceSvc := service.NewPriceService(priceRepo)
 
@@ -46,9 +53,10 @@ func buildApp() (*gin.Engine, error) {
 	towHandler := handler.NewTowHandler(towSvc)
 	metricHandler := handler.NewMetricHandler(metricSvc)
 	priceHandler := handler.NewPriceHandler(priceSvc)
+	paymentHandler := handler.NewPaymentHandler(paymentSvc)
 
 	// 5) Router
-	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler)
+	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler, paymentHandler)
 	engine := router.InitializeRouter()
 	return engine, nil
 }

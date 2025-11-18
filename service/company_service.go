@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"tow-management-system-api/model"
+	"tow-management-system-api/utilities"
 
 	"github.com/google/uuid"
 )
@@ -19,11 +20,13 @@ type CompanyRepository interface {
 
 type CompanyService struct {
 	companyRepository CompanyRepository
+	stripeClient      *utilities.StripeUtility
 }
 
-func NewCompanyService(companyRepo CompanyRepository) *CompanyService {
+func NewCompanyService(companyRepo CompanyRepository, stripeClient *utilities.StripeUtility) *CompanyService {
 	return &CompanyService{
 		companyRepository: companyRepo,
+		stripeClient:      stripeClient,
 	}
 }
 
@@ -39,7 +42,15 @@ func (s *CompanyService) CreateCompany(ctx context.Context, company *model.Compa
 	company.CreatedDate = time.Now().UTC().Unix()
 	company.SchedulingLink = generateSchedulingLinkSlug(company.Name)
 
-	if err := s.companyRepository.Create(ctx, company); err != nil {
+	account, err := s.stripeClient.CreateConnectedAccount()
+
+	company.StripeAccountId = &account
+
+	if err != nil {
+		return nil, fmt.Errorf("create company failed: %w", err)
+	}
+
+	if err = s.companyRepository.Create(ctx, company); err != nil {
 		return nil, fmt.Errorf("create company failed: %w", err)
 	}
 

@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"time"
 	"tow-management-system-api/model"
-	"tow-management-system-api/repository"
+	"tow-management-system-api/utilities"
 )
 
 type TowRepository interface {
@@ -13,16 +15,69 @@ type TowRepository interface {
 	Update(ctx context.Context, id string, updateData *model.Tow) error
 }
 
+type PriceRepositoryForTowService interface {
+	Find(ctx context.Context, filterModel *model.Price) ([]*model.Price, error)
+}
+
 // TowService defines business logic for the Tow entity.
 type TowService struct {
-	towRepository *repository.TowMongoRepository
+	towRepository   TowRepository
+	priceRepository PriceRepositoryForTowService
 }
 
 // NewTowService creates a new TowService instance.
-func NewTowService(towRepo *repository.TowMongoRepository) *TowService {
+func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService) *TowService {
 	return &TowService{
-		towRepository: towRepo,
+		towRepository:   towRepo,
+		priceRepository: priceRepo,
 	}
+}
+
+// ScheduleTow calculates pricing, creates a payable invoice, persists the tow, and returns the saved entity.
+func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*model.Tow, error) {
+	if towRequest == nil {
+		return nil, fmt.Errorf("tow request is required")
+	}
+
+	if towRequest.CompanyID == nil || *towRequest.CompanyID == "" {
+		return nil, fmt.Errorf("company id is required")
+	}
+
+	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
+		CompanyID: towRequest.CompanyID,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to load pricing information: %w", err)
+	}
+
+	total, err := utilities.CalculateTowPrice(pricingInfo, towRequest)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate tow price: %w", err)
+	}
+
+	towRequest.Price = &total
+
+	invoiceID, err := utilities.CreatePayableItem(total)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payable item: %w", err)
+	}
+
+	paymentStatus := "unpaid"
+	towRequest.PaymentStatus = &paymentStatus
+	towRequest.PaymentReference = &invoiceID
+	now := time.Now().UTC().Unix()
+	towRequest.CreatedAt = &now
+	id := uuid.NewString()
+	towRequest.ID = &id
+
+	if err := s.towRepository.Create(ctx, towRequest); err != nil {
+		return nil, fmt.Errorf("failed to save tow: %w", err)
+	}
+
+	return towRequest, nil
 }
 
 // FindTowsByCompanyId retrieves all tows that belong to a specific company.
