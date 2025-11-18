@@ -36,6 +36,7 @@ MONGO_CLUSTER_HOSTNAME="" # find in atlas console
 APP_NAME="tow-management-system-api"
 ENVIRONMENT="local" # or dev/prod
 PORT="8080"
+STRIPE_API_KEY=""
 ```
 3. Run command:
 ```bash

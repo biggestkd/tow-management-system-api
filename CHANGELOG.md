@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.4.0
+* Integrated Pricing endpoints with Stripe API
+
 ## 0.3.0
 * Create Pricing endpoints
 

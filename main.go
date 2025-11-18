@@ -33,11 +33,17 @@ func buildApp() (*gin.Engine, error) {
 	towRepo := db.CreateTowRepository()
 	priceRepo := db.CreatePriceRepository()
 
+	// 2.5) Stripe Client
+	stripeClient, err := utilities.NewStripeClient()
+	if err != nil {
+		return nil, err
+	}
+
 	// 3) Services
 	userSvc := service.NewUserServiceWithMongo(userRepo)
-	companySvc := service.NewCompanyService(companyRepo)
+	companySvc := service.NewCompanyService(companyRepo, stripeClient)
 	towSvc := service.NewTowService(towRepo, priceRepo)
-	paymentSvc := service.NewPaymentService(towRepo)
+	paymentSvc := service.NewPaymentService(towRepo, companyRepo, stripeClient)
 	metricSvc := service.NewMetricService(towRepo)
 	priceSvc := service.NewPriceService(priceRepo)
 

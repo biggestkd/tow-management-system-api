@@ -12,5 +12,5 @@ type Company struct {
 	PhoneNumber     *string `json:"phoneNumber,omitempty" bson:"phoneNumber,omitempty"`
 	CreatedDate     int64   `json:"createdDate,omitempty" bson:"createdDate,omitempty"`
 	SchedulingLink  *string `json:"schedulingLink,omitempty" bson:"schedulingLink,omitempty"`
-	StripeAccountId *string `json:"paymentProviderId,omitempty" bson:"paymentProviderId,omitempty"`
+	StripeAccountId *string `json:"stripeAccountId,omitempty" bson:"stripeAccountId,omitempty"`
 }

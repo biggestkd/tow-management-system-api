@@ -4,13 +4,16 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stripe/stripe-go/v83"
 )
 
 // PaymentService defines the contract required for payment-related operations.
 type PaymentService interface {
-	UpdateTowPaymentStatus(ctx context.Context, paymentStatus string, paymentReference string) error
+	RetrievePaymentAccount(ctx context.Context, companyId string) (*stripe.Account, error)
+	GenerateDashboardLink(ctx context.Context, companyId, returnURL, refreshURL string) (string, error)
 }
 
 // PaymentHandler handles payment-related HTTP endpoints.
@@ -23,30 +26,61 @@ func NewPaymentHandler(service PaymentService) *PaymentHandler {
 	return &PaymentHandler{paymentService: service}
 }
 
-// PostStripeWebhook POST /payment/webhook
-// Receives payment provider webhook notifications and updates tow payment status.
-// Expected payload includes "invoiceId" and "paymentStatus".
-func (h *PaymentHandler) PostStripeWebhook(c *gin.Context) {
-	var payload struct {
-		InvoiceID     string `json:"invoiceId"`
-		PaymentStatus string `json:"paymentStatus"`
+// GetPaymentAccount GET /payments/account/:companyId
+// Response: 200 Stripe Account | 400 invalid request | 404 not found
+func (h *PaymentHandler) GetPaymentAccount(c *gin.Context) {
+	companyId := c.Param("companyId")
+	if companyId == "" {
+		c.String(http.StatusBadRequest, "company id is required")
+		return
 	}
 
-	if err := c.ShouldBindJSON(&payload); err != nil {
+	account, err := h.paymentService.RetrievePaymentAccount(c.Request.Context(), companyId)
+	if err != nil {
+		log.Println(err.Error())
+		// Check if it's a "not found" error
+		if strings.Contains(err.Error(), "not found") {
+			c.String(http.StatusNotFound, "company not found")
+			return
+		}
+		c.String(http.StatusBadRequest, "something went wrong")
+		return
+	}
+
+	c.JSON(http.StatusOK, account)
+}
+
+// PostPaymentAccount POST /payments/account/:companyId
+// Request Body: { "returnURL": "...", "refreshURL": "..." }
+// Response: 200 { "url": "..." } | 400 invalid request | 404 not found
+func (h *PaymentHandler) PostPaymentAccount(c *gin.Context) {
+	companyId := c.Param("companyId")
+	if companyId == "" {
+		c.String(http.StatusBadRequest, "company id is required")
+		return
+	}
+
+	var body struct {
+		ReturnURL  string `json:"returnURL" binding:"required"`
+		RefreshURL string `json:"refreshURL" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
 		c.String(http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
-	if payload.InvoiceID == "" || payload.PaymentStatus == "" {
-		c.String(http.StatusBadRequest, "invoiceId and paymentStatus are required")
-		return
-	}
-
-	if err := h.paymentService.UpdateTowPaymentStatus(c.Request.Context(), payload.PaymentStatus, payload.InvoiceID); err != nil {
+	url, err := h.paymentService.GenerateDashboardLink(c.Request.Context(), companyId, body.ReturnURL, body.RefreshURL)
+	if err != nil {
 		log.Println(err.Error())
-		c.String(http.StatusInternalServerError, "failed to update payment")
+		// Check if it's a "not found" error
+		if strings.Contains(err.Error(), "not found") {
+			c.String(http.StatusNotFound, "company not found")
+			return
+		}
+		c.String(http.StatusBadRequest, "something went wrong")
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"url": url})
 }

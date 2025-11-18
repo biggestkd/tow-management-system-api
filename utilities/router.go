@@ -69,7 +69,8 @@ func (r *Router) InitializeRouter() *gin.Engine {
 	engine.PUT("/pricing", r.priceHandler.PutPrices)                    // Set prices
 
 	// ==== Payment routes ====
-	engine.POST("/payment/webhook", r.paymentHandler.PostStripeWebhook) // Handle payment webhooks
+	engine.GET("/payments/account/:companyId", r.paymentHandler.GetPaymentAccount)   // Get payment account
+	engine.POST("/payments/account/:companyId", r.paymentHandler.PostPaymentAccount) // Generate dashboard link
 
 	return engine
 }
