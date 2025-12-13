@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.5.0
+* Integrate with Amazon Location Service
+* Add endpoint for Location suggestions
+
 ## 0.4.0
 * Integrated Pricing endpoints with Stripe API
 

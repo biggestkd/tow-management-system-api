@@ -39,6 +39,12 @@ func buildApp() (*gin.Engine, error) {
 		return nil, err
 	}
 
+	// 2.6) Location Utility
+	locationUtility, err := utilities.NewLocationUtility()
+	if err != nil {
+		return nil, err
+	}
+
 	// 3) Services
 	userSvc := service.NewUserServiceWithMongo(userRepo)
 	companySvc := service.NewCompanyService(companyRepo, stripeClient)
@@ -46,6 +52,7 @@ func buildApp() (*gin.Engine, error) {
 	paymentSvc := service.NewPaymentService(towRepo, companyRepo, stripeClient)
 	metricSvc := service.NewMetricService(towRepo)
 	priceSvc := service.NewPriceService(priceRepo)
+	locationSvc := service.NewLocationService(locationUtility)
 
 	// 4) Handlers
 	userHandler := handler.NewUserHandler(userSvc)
@@ -54,9 +61,10 @@ func buildApp() (*gin.Engine, error) {
 	metricHandler := handler.NewMetricHandler(metricSvc)
 	priceHandler := handler.NewPriceHandler(priceSvc)
 	paymentHandler := handler.NewPaymentHandler(paymentSvc)
+	locationHandler := handler.NewLocationHandler(locationSvc)
 
 	// 5) Router
-	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler, paymentHandler)
+	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler, paymentHandler, locationHandler)
 	engine := router.InitializeRouter()
 	return engine, nil
 }
