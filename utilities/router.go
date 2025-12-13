@@ -8,22 +8,24 @@ import (
 )
 
 type Router struct {
-	userHandler    *handler.UserHandler
-	companyHandler *handler.CompanyHandler
-	towHandler     *handler.TowHandler
-	metricHandler  *handler.MetricHandler
-	priceHandler   *handler.PriceHandler
-	paymentHandler *handler.PaymentHandler
+	userHandler     *handler.UserHandler
+	companyHandler  *handler.CompanyHandler
+	towHandler      *handler.TowHandler
+	metricHandler   *handler.MetricHandler
+	priceHandler    *handler.PriceHandler
+	paymentHandler  *handler.PaymentHandler
+	locationHandler *handler.LocationHandler
 }
 
-func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler, priceHandler *handler.PriceHandler, paymentHandler *handler.PaymentHandler) *Router {
+func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler, priceHandler *handler.PriceHandler, paymentHandler *handler.PaymentHandler, locationHandler *handler.LocationHandler) *Router {
 	return &Router{
-		userHandler:    user,
-		companyHandler: company,
-		towHandler:     towHandler,
-		metricHandler:  metricHandler,
-		priceHandler:   priceHandler,
-		paymentHandler: paymentHandler,
+		userHandler:     user,
+		companyHandler:  company,
+		towHandler:      towHandler,
+		metricHandler:   metricHandler,
+		priceHandler:    priceHandler,
+		paymentHandler:  paymentHandler,
+		locationHandler: locationHandler,
 	}
 }
 
@@ -71,6 +73,9 @@ func (r *Router) InitializeRouter() *gin.Engine {
 	// ==== Payment routes ====
 	engine.GET("/payments/account/:companyId", r.paymentHandler.GetPaymentAccount)   // Get payment account
 	engine.POST("/payments/account/:companyId", r.paymentHandler.PostPaymentAccount) // Generate dashboard link
+
+	// ==== Location routes ====
+	engine.GET("/locations/suggest", r.locationHandler.SuggestLocations) // Get location suggestions
 
 	return engine
 }
