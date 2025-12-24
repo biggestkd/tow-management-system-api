@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.6.9
+* Add calculate tow price endpoint
+
 ## 0.5.0
 * Integrate with Amazon Location Service
 * Add endpoint for Location suggestions
