@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Database wraps a Mongo geoplacesClient and logical database handle.
+// Database wraps a Mongo client and logical database handle.
 type Database struct {
 	client *mongo.Client
 	db     *mongo.Database
@@ -56,7 +56,7 @@ func NewDatabaseConnection() (*Database, error) {
 	}, nil
 }
 
-// Close disconnects the geoplacesClient and releases resources.
+// Close disconnects the client and releases resources.
 func (d *Database) Close(ctx context.Context) error {
 	if d == nil || d.client == nil {
 		return nil
