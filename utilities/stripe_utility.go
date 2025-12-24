@@ -14,7 +14,7 @@ type StripeUtility struct {
 	client *stripe.Client
 }
 
-// NewStripeClient initializes stripe client using STRIPE_API_KEY and returns a singleton.
+// NewStripeClient initializes stripe geoplacesClient using STRIPE_API_KEY and returns a singleton.
 func NewStripeClient() (*StripeUtility, error) {
 	apiKey := os.Getenv("STRIPE_API_KEY")
 

@@ -14,6 +14,7 @@ type TowService interface {
 	ScheduleTow(ctx context.Context, towRequest *model.Tow) (*model.Tow, error)
 	FindTowsByCompanyId(ctx context.Context, companyId string) ([]*model.Tow, error)
 	UpdateTow(ctx context.Context, towId string, update *model.Tow) error
+	GetEstimate(ctx context.Context, companyId string, pickup string, dropoff string) (int64, error)
 }
 
 // TowHandler handles HTTP routes for Tow-related operations.
@@ -99,4 +100,36 @@ func (h *TowHandler) PutUpdateTow(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// GetEstimate GET /tow/estimates?pickup=123&dropoff=456&company=0009990
+// Calculates and returns a price estimate for a tow request.
+// Query parameters: pickup (required), dropoff (required), company (required)
+// Response: 200 { "estimate": int } | 400/404/500 generic error text
+func (h *TowHandler) GetEstimate(c *gin.Context) {
+	pickup := c.Query("pickup")
+	dropoff := c.Query("dropoff")
+	company := c.Query("company")
+
+	if pickup == "" {
+		c.String(http.StatusBadRequest, "pickup is required")
+		return
+	}
+	if dropoff == "" {
+		c.String(http.StatusBadRequest, "dropoff is required")
+		return
+	}
+	if company == "" {
+		c.String(http.StatusBadRequest, "company is required")
+		return
+	}
+
+	estimate, err := h.towService.GetEstimate(c.Request.Context(), company, pickup, dropoff)
+	if err != nil {
+		log.Println(err.Error())
+		c.String(http.StatusBadRequest, "something went wrong")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"estimate": estimate})
 }

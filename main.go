@@ -48,7 +48,7 @@ func buildApp() (*gin.Engine, error) {
 	// 3) Services
 	userSvc := service.NewUserServiceWithMongo(userRepo)
 	companySvc := service.NewCompanyService(companyRepo, stripeClient)
-	towSvc := service.NewTowService(towRepo, priceRepo)
+	towSvc := service.NewTowService(towRepo, priceRepo, locationUtility)
 	paymentSvc := service.NewPaymentService(towRepo, companyRepo, stripeClient)
 	metricSvc := service.NewMetricService(towRepo)
 	priceSvc := service.NewPriceService(priceRepo)

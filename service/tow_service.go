@@ -23,13 +23,15 @@ type PriceRepositoryForTowService interface {
 type TowService struct {
 	towRepository   TowRepository
 	priceRepository PriceRepositoryForTowService
+	locationUtility *utilities.LocationUtility
 }
 
 // NewTowService creates a new TowService instance.
-func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService) *TowService {
+func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService, locationUtility *utilities.LocationUtility) *TowService {
 	return &TowService{
 		towRepository:   towRepo,
 		priceRepository: priceRepo,
+		locationUtility: locationUtility,
 	}
 }
 
@@ -110,4 +112,67 @@ func (s *TowService) UpdateTow(ctx context.Context, towId string, update *model.
 		return fmt.Errorf("update tow failed: %w", err)
 	}
 	return nil
+}
+
+// GetEstimate calculates and returns a price estimate for a tow request without creating a tow or payment reference.
+func (s *TowService) GetEstimate(ctx context.Context, companyId string, pickup string, dropoff string) (int64, error) {
+	if companyId == "" {
+		return 0, fmt.Errorf("company id is required")
+	}
+	if pickup == "" {
+		return 0, fmt.Errorf("pickup is required")
+	}
+	if dropoff == "" {
+		return 0, fmt.Errorf("dropoff is required")
+	}
+
+	// load prices
+	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
+		CompanyID: &companyId,
+	})
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to load pricing information: %w", err)
+	}
+
+	// Convert the addresses to geo positions
+	pickupCoordinates, err := s.locationUtility.ParseGeocodeFromAddress(pickup)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse pickup location: %w", err)
+	}
+
+	dropoffCoordinates, err := s.locationUtility.ParseGeocodeFromAddress(dropoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse dropoff location: %w", err)
+	}
+
+	totalMiles, err := s.locationUtility.CalculateDistanceBetweenCoordinates(pickupCoordinates, dropoffCoordinates)
+
+	totalAmount := calculatePriceFromMiles(pricingInfo, totalMiles)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to calculate tow price: %w", err)
+	}
+
+	return int64(totalAmount), nil
+}
+
+// calculatePriceFromMiles calculates the total price in cents based on pricing information and total miles.
+// Prices array always contains an item with "Hook Up Fee" and "Per Mile Amount".
+func calculatePriceFromMiles(prices []*model.Price, totalMiles float64) float64 {
+	total := 0.0
+
+	for _, price := range prices {
+		if price.ItemName == nil || price.Amount == nil {
+			continue
+		}
+
+		if *price.ItemName == "Hook Up Fee" {
+			total += float64(*price.Amount)
+		} else if *price.ItemName == "Per Mile Amount" {
+			total += float64(*price.Amount) * totalMiles
+		}
+	}
+
+	return total
 }
