@@ -3,10 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
+	"log"
+	"math"
 	"time"
 	"tow-management-system-api/model"
 	"tow-management-system-api/utilities"
+
+	"github.com/google/uuid"
 )
 
 type TowRepository interface {
@@ -24,14 +27,16 @@ type TowService struct {
 	towRepository   TowRepository
 	priceRepository PriceRepositoryForTowService
 	locationUtility *utilities.LocationUtility
+	stripeClient    *utilities.StripeUtility
 }
 
 // NewTowService creates a new TowService instance.
-func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService, locationUtility *utilities.LocationUtility) *TowService {
+func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService, locationUtility *utilities.LocationUtility, stripeClient *utilities.StripeUtility) *TowService {
 	return &TowService{
 		towRepository:   towRepo,
 		priceRepository: priceRepo,
 		locationUtility: locationUtility,
+		stripeClient:    stripeClient,
 	}
 }
 
@@ -49,19 +54,54 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 		CompanyID: towRequest.CompanyID,
 	})
 
+	log.Println(*towRequest.CompanyID)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pricing information: %w", err)
 	}
 
-	total, err := utilities.CalculateTowPrice(pricingInfo, towRequest)
+	// Calculate total miles
+	pickupAddress, err := s.locationUtility.ParseGeocodeFromAddress(*towRequest.Pickup)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to calculate tow price: %w", err)
+		return nil, err
 	}
+
+	destinationAddress, err := s.locationUtility.ParseGeocodeFromAddress(*towRequest.Destination)
+
+	if err != nil {
+		return nil, err
+	}
+
+	totalMiles, err := s.locationUtility.CalculateDistanceBetweenCoordinates(pickupAddress, destinationAddress)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// generate the payable line item for the hookup fee
+	var lineItems []model.PayableLineItem
+
+	lineItems = append(lineItems, model.PayableLineItem{
+		Name:     "Hook Up Fee",
+		Amount:   int64(*pricingInfo[0].Amount),
+		Quantity: 1,
+	})
+
+	mileageCost := int64(*pricingInfo[1].Amount) * int64(math.Ceil(totalMiles))
+
+	lineItems = append(lineItems, model.PayableLineItem{
+		Name:     fmt.Sprintf("%f miles at $%f per mile", totalMiles, float64(*pricingInfo[1].Amount/100)), // must divide by 100 to get it into dollar amounts
+		Amount:   mileageCost,
+		Quantity: 1,
+	})
+
+	totalFloat := calculatePriceFromMiles(pricingInfo, totalMiles)
+	total := int(math.Round(totalFloat))
 
 	towRequest.Price = &total
 
-	invoiceID, err := utilities.CreatePayableItem(total)
+	checkoutURL, err := s.stripeClient.CreatePayableItem(int64(total), lineItems)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create payable item: %w", err)
@@ -69,7 +109,7 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 
 	paymentStatus := "unpaid"
 	towRequest.PaymentStatus = &paymentStatus
-	towRequest.PaymentReference = &invoiceID
+	towRequest.PaymentReference = &checkoutURL
 	now := time.Now().UTC().Unix()
 	towRequest.CreatedAt = &now
 	id := uuid.NewString()
