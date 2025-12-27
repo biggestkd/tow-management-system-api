@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"time"
 	"tow-management-system-api/model"
 	"tow-management-system-api/utilities"
@@ -24,19 +25,23 @@ type PriceRepositoryForTowService interface {
 
 // TowService defines business logic for the Tow entity.
 type TowService struct {
-	towRepository   TowRepository
-	priceRepository PriceRepositoryForTowService
-	locationUtility *utilities.LocationUtility
-	stripeClient    *utilities.StripeUtility
+	towRepository     TowRepository
+	priceRepository   PriceRepositoryForTowService
+	companyRepository CompanyRepository
+	locationUtility   *utilities.LocationUtility
+	stripeClient      *utilities.StripeUtility
+	emailUtility      *utilities.AmazonSesUtility
 }
 
 // NewTowService creates a new TowService instance.
-func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService, locationUtility *utilities.LocationUtility, stripeClient *utilities.StripeUtility) *TowService {
+func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService, companyRepo CompanyRepository, locationUtility *utilities.LocationUtility, stripeClient *utilities.StripeUtility, emailUtility *utilities.AmazonSesUtility) *TowService {
 	return &TowService{
-		towRepository:   towRepo,
-		priceRepository: priceRepo,
-		locationUtility: locationUtility,
-		stripeClient:    stripeClient,
+		towRepository:     towRepo,
+		priceRepository:   priceRepo,
+		companyRepository: companyRepo,
+		locationUtility:   locationUtility,
+		stripeClient:      stripeClient,
+		emailUtility:      emailUtility,
 	}
 }
 
@@ -117,6 +122,18 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 
 	if err := s.towRepository.Create(ctx, towRequest); err != nil {
 		return nil, fmt.Errorf("failed to save tow: %w", err)
+	}
+
+	emailContent, err := s.formatPaymentEmail(ctx, towRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format email: %w", err)
+	}
+
+	subject := "Service Confirmation – Complete Your Payment"
+	err = s.emailUtility.SendEmail(ctx, *towRequest.PrimaryContact, subject, emailContent)
+
+	if err != nil {
+		return nil, err
 	}
 
 	return towRequest, nil
@@ -215,4 +232,85 @@ func calculatePriceFromMiles(prices []*model.Price, totalMiles float64) float64 
 	}
 
 	return total
+}
+
+// formatPaymentEmail formats the payment confirmation email content using company and tow information.
+func (s *TowService) formatPaymentEmail(ctx context.Context, towRequest *model.Tow) (string, error) {
+	if towRequest == nil {
+		return "", fmt.Errorf("tow request is required")
+	}
+	if towRequest.CompanyID == nil || *towRequest.CompanyID == "" {
+		return "", fmt.Errorf("company id is required")
+	}
+	if towRequest.PrimaryContact == nil || *towRequest.PrimaryContact == "" {
+		return "", fmt.Errorf("primary contact is required")
+	}
+	if towRequest.PaymentReference == nil || *towRequest.PaymentReference == "" {
+		return "", fmt.Errorf("payment reference is required")
+	}
+
+	// Fetch company information
+	companies, err := s.companyRepository.Find(ctx, &model.Company{
+		ID: towRequest.CompanyID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch company: %w", err)
+	}
+	if len(companies) == 0 {
+		return "", fmt.Errorf("company not found")
+	}
+
+	company := companies[0]
+	companyName := "the service provider"
+	if company.Name != nil && *company.Name != "" {
+		companyName = *company.Name
+	}
+
+	companyPhoneNumber := ""
+	if company.PhoneNumber != nil && *company.PhoneNumber != "" {
+		companyPhoneNumber = *company.PhoneNumber
+	}
+
+	// Get platform information from environment variables
+	platformName := os.Getenv("PLATFORM_NAME")
+	if platformName == "" {
+		platformName = "Tow Management Platform"
+	}
+
+	platformSupportEmail := os.Getenv("PLATFORM_SUPPORT_EMAIL")
+	if platformSupportEmail == "" {
+		platformSupportEmail = "support@towmanagementplatform.com"
+	}
+
+	platformWebsite := os.Getenv("PLATFORM_WEBSITE")
+	if platformWebsite == "" {
+		platformWebsite = "https://towmanagementplatform.com"
+	}
+
+	// Format the email content
+	emailContent := fmt.Sprintf(`Thank you for choosing %s for your service.
+
+To complete your transaction securely, please use the link below:
+
+%s
+
+This payment is processed through our platform on behalf of %s to ensure a safe and reliable experience.
+
+If you have any questions regarding your service or payment, please contact %s directly`, companyName, *towRequest.PaymentReference, companyName, companyName)
+
+	if companyPhoneNumber != "" {
+		emailContent += fmt.Sprintf(" at %s", companyPhoneNumber)
+	}
+
+	emailContent += fmt.Sprintf(`, or reply to this email for additional support.
+
+Thank you for your business.
+
+Best regards,
+%s
+Customer Support Team
+%s
+`, platformName, platformWebsite)
+
+	return emailContent, nil
 }
