@@ -1,6 +1,9 @@
 # Change Log
 
-## 0.6.9
+## 0.7.0
+* Add Amazon SES Utility to enable email confirmation of Tow Requests.
+
+## 0.6.0
 * Add calculate tow price endpoint
 
 ## 0.5.0
