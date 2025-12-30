@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.8.0
+* Create Stripe webhook endpoint
+* Update Tow model
+
 ## 0.7.0
 * Add Amazon SES Utility to enable email confirmation of Tow Requests.
 

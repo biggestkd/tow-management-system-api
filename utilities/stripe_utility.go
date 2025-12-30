@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"log"
 	"os"
 	"tow-management-system-api/model"
 
@@ -191,6 +192,8 @@ func (sc *StripeUtility) CreatePayableItem(total int64, lineItems []model.Payabl
 	if err != nil {
 		return "", "", errors.New("failed to create checkout session: " + err.Error())
 	}
+
+	log.Println(sess.ID)
 
 	if sess.ID == "" {
 		return "", "", errors.New("checkout session created but no ID was returned")
