@@ -14,10 +14,11 @@ type Router struct {
 	metricHandler   *handler.MetricHandler
 	priceHandler    *handler.PriceHandler
 	paymentHandler  *handler.PaymentHandler
+	stripeHandler   *handler.StripeHandler
 	locationHandler *handler.LocationHandler
 }
 
-func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler, priceHandler *handler.PriceHandler, paymentHandler *handler.PaymentHandler, locationHandler *handler.LocationHandler) *Router {
+func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHandler *handler.TowHandler, metricHandler *handler.MetricHandler, priceHandler *handler.PriceHandler, paymentHandler *handler.PaymentHandler, stripeHandler *handler.StripeHandler, locationHandler *handler.LocationHandler) *Router {
 	return &Router{
 		userHandler:     user,
 		companyHandler:  company,
@@ -25,6 +26,7 @@ func NewRouter(user *handler.UserHandler, company *handler.CompanyHandler, towHa
 		metricHandler:   metricHandler,
 		priceHandler:    priceHandler,
 		paymentHandler:  paymentHandler,
+		stripeHandler:   stripeHandler,
 		locationHandler: locationHandler,
 	}
 }
@@ -62,7 +64,7 @@ func (r *Router) InitializeRouter() *gin.Engine {
 	engine.GET("/tows/company/:companyId", r.towHandler.GetTowHistory) // Get tow history
 	engine.POST("/tows/:companyId", r.towHandler.PostTow)              // Create tow
 	engine.PUT("/tows/:towId", r.towHandler.PutUpdateTow)              // Update tow
-	engine.GET("/tows/estimates", r.towHandler.GetEstimate)             // Get price estimate
+	engine.GET("/tows/estimates", r.towHandler.GetEstimate)            // Get price estimate
 
 	// ==== Metric routes ====
 	engine.GET("/metrics/:companyId", r.metricHandler.GetCompanyMetrics) // Get metrics
@@ -74,6 +76,9 @@ func (r *Router) InitializeRouter() *gin.Engine {
 	// ==== Payment routes ====
 	engine.GET("/payments/account/:companyId", r.paymentHandler.GetPaymentAccount)   // Get payment account
 	engine.POST("/payments/account/:companyId", r.paymentHandler.PostPaymentAccount) // Generate dashboard link
+
+	// ==== Stripe Webhook routes ====
+	engine.POST("/webhooks/stripe", r.stripeHandler.PostWebhook) // Handle Stripe webhooks
 
 	// ==== Location routes ====
 	engine.GET("/locations/suggest", r.locationHandler.SuggestLocations) // Get location suggestions

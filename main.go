@@ -67,10 +67,11 @@ func buildApp() (*gin.Engine, error) {
 	metricHandler := handler.NewMetricHandler(metricSvc)
 	priceHandler := handler.NewPriceHandler(priceSvc)
 	paymentHandler := handler.NewPaymentHandler(paymentSvc)
+	stripeHandler := handler.NewStripeHandler(paymentSvc)
 	locationHandler := handler.NewLocationHandler(locationSvc)
 
 	// 5) Router
-	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler, paymentHandler, locationHandler)
+	router := utilities.NewRouter(userHandler, companyHandler, towHandler, metricHandler, priceHandler, paymentHandler, stripeHandler, locationHandler)
 	engine := router.InitializeRouter()
 	return engine, nil
 }

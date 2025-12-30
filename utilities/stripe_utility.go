@@ -3,9 +3,12 @@ package utilities
 import (
 	"errors"
 	"fmt"
-	"github.com/stripe/stripe-go/v83/loginlink"
+	"github.com/google/uuid"
+	"log"
 	"os"
 	"tow-management-system-api/model"
+
+	"github.com/stripe/stripe-go/v83/loginlink"
 
 	"github.com/stripe/stripe-go/v83"
 	"github.com/stripe/stripe-go/v83/account"
@@ -124,39 +127,41 @@ func (sc *StripeUtility) GetAccount(accountId string) (*stripe.Account, error) {
 	return acct, nil
 }
 
-// CreatePayableItem creates a Stripe Checkout Session (one-time payment) and returns the hosted Checkout URL.
+// CreatePayableItem creates a Stripe Checkout Session (one-time payment) and returns the checkout session ID and URL.
 //
 // Parameters:
 // - total: total amount in cents (integer)
 // - lineItems: array of (name, amount) pairs, amounts in cents
 //
 // Returns:
-// - URL string for Stripe-hosted checkout
-func (sc *StripeUtility) CreatePayableItem(total int64, lineItems []model.PayableLineItem) (string, error) {
+// - checkoutSessionId: the Stripe checkout session ID
+// - checkoutURL: URL string for Stripe-hosted checkout
+// - error: any error that occurred
+func (sc *StripeUtility) CreatePayableItem(total int64, lineItems []model.PayableLineItem) (string, string, error) {
 	if total <= 0 {
-		return "", errors.New("total must be greater than 0")
+		return "", "", errors.New("total must be greater than 0")
 	}
 	if len(lineItems) == 0 {
-		return "", errors.New("at least one line item is required")
+		return "", "", errors.New("at least one line item is required")
 	}
 
 	successURL := "https://www.google.com/"
 	cancelURL := "https://www.google.com/"
 	if successURL == "" {
-		return "", errors.New("STRIPE_CHECKOUT_SUCCESS_URL not set")
+		return "", "", errors.New("STRIPE_CHECKOUT_SUCCESS_URL not set")
 	}
 	if cancelURL == "" {
-		return "", errors.New("STRIPE_CHECKOUT_CANCEL_URL not set")
+		return "", "", errors.New("STRIPE_CHECKOUT_CANCEL_URL not set")
 	}
 
 	sessionLineItems := make([]*stripe.CheckoutSessionLineItemParams, 0, len(lineItems))
 
 	for i, li := range lineItems {
 		if li.Name == "" {
-			return "", fmt.Errorf("lineItems[%d].Name is required", i)
+			return "", "", fmt.Errorf("lineItems[%d].Name is required", i)
 		}
 		if li.Amount <= 0 {
-			return "", fmt.Errorf("lineItems[%d].Amount must be > 0", i)
+			return "", "", fmt.Errorf("lineItems[%d].Amount must be > 0", i)
 		}
 
 		sessionLineItems = append(sessionLineItems, &stripe.CheckoutSessionLineItemParams{
@@ -181,16 +186,22 @@ func (sc *StripeUtility) CreatePayableItem(total int64, lineItems []model.Payabl
 
 	// Best-effort idempotency key to avoid duplicates if caller retries.
 	// If you have a stable internal ID (e.g., service_request_id), pass it via metadata and use it here instead.
-	params.SetIdempotencyKey(fmt.Sprintf("payable_%d_%d", total, len(lineItems)))
+	params.SetIdempotencyKey(fmt.Sprintf("payable_%d_%s", total, uuid.NewString()))
 
 	sess, err := checkoutsession.New(params)
 	if err != nil {
-		return "", errors.New("failed to create checkout session: " + err.Error())
+		return "", "", errors.New("failed to create checkout session: " + err.Error())
+	}
+
+	log.Println(sess.ID)
+
+	if sess.ID == "" {
+		return "", "", errors.New("checkout session created but no ID was returned")
 	}
 
 	if sess.URL == "" {
-		return "", errors.New("checkout session created but no URL was returned")
+		return "", "", errors.New("checkout session created but no URL was returned")
 	}
 
-	return sess.URL, nil
+	return sess.ID, sess.URL, nil
 }

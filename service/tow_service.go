@@ -106,7 +106,7 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 
 	towRequest.Price = &total
 
-	checkoutURL, err := s.stripeClient.CreatePayableItem(int64(total), lineItems)
+	checkoutSessionId, checkoutURL, err := s.stripeClient.CreatePayableItem(int64(total), lineItems)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create payable item: %w", err)
@@ -114,7 +114,8 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 
 	paymentStatus := "unpaid"
 	towRequest.PaymentStatus = &paymentStatus
-	towRequest.PaymentReference = &checkoutURL
+	towRequest.PaymentReference = &checkoutSessionId
+	towRequest.CheckoutUrl = &checkoutURL
 	now := time.Now().UTC().Unix()
 	towRequest.CreatedAt = &now
 	id := uuid.NewString()
@@ -245,8 +246,8 @@ func (s *TowService) formatPaymentEmail(ctx context.Context, towRequest *model.T
 	if towRequest.PrimaryContact == nil || *towRequest.PrimaryContact == "" {
 		return "", fmt.Errorf("primary contact is required")
 	}
-	if towRequest.PaymentReference == nil || *towRequest.PaymentReference == "" {
-		return "", fmt.Errorf("payment reference is required")
+	if towRequest.CheckoutUrl == nil || *towRequest.CheckoutUrl == "" {
+		return "", fmt.Errorf("checkout URL is required")
 	}
 
 	// Fetch company information
@@ -296,7 +297,7 @@ To complete your transaction securely, please use the link below:
 
 This payment is processed through our platform on behalf of %s to ensure a safe and reliable experience.
 
-If you have any questions regarding your service or payment, please contact %s directly`, companyName, *towRequest.PaymentReference, companyName, companyName)
+If you have any questions regarding your service or payment, please contact %s directly`, companyName, *towRequest.CheckoutUrl, companyName, companyName)
 
 	if companyPhoneNumber != "" {
 		emailContent += fmt.Sprintf(" at %s", companyPhoneNumber)
