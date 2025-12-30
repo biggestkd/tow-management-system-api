@@ -9,9 +9,10 @@ type Tow struct {
 	Attachments      []string `json:"attachments,omitempty" bson:"attachments,omitempty"`
 	Notes            *string  `json:"notes,omitempty" bson:"notes,omitempty"`
 	History          []string `json:"history,omitempty" bson:"history,omitempty"`
-	Status           *string  `json:"status,omitempty" bson:"status,omitempty"` // pending, accepted, dispatched, arrived_pickup, in_transit, completed, cancelled
-	PaymentStatus    *string  `json:"paymentStatus,omitempty" bson:"paymentStatus,omitempty"` // unpaid, paid
+	Status           *string  `json:"status,omitempty" bson:"status,omitempty"`                     // pending, accepted, dispatched, arrived_pickup, in_transit, completed, cancelled
+	PaymentStatus    *string  `json:"paymentStatus,omitempty" bson:"paymentStatus,omitempty"`       // unpaid, paid
 	PaymentReference *string  `json:"paymentReference,omitempty" bson:"paymentReference,omitempty"` // payment reference id from stripe
+	CheckoutUrl      *string  `json:"checkoutUrl,omitempty" bson:"checkoutUrl,omitempty"`           // Stripe checkout session URL
 	CompanyID        *string  `json:"companyId,omitempty" bson:"companyId,omitempty"`
 	CreatedAt        *int64   `json:"createdAt,omitempty" bson:"createdAt,omitempty"`
 	Price            *int     `json:"price,omitempty" bson:"price,omitempty"`
