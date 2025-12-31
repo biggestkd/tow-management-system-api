@@ -1,0 +1,85 @@
+name: Setup Infrastructure
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (development/qa/prod)"
+        required: false
+        default: "development"
+        type: choice
+        options:
+          - development
+          - production
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  APP_NAME: tow-management-system-api
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+
+    # If manual run, use the chosen env; otherwise default to development (e.g., merges to main).
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_RUNNER_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Lambda
+        env:
+          MONGO_CLUSTER_HOSTNAME: ${{ secrets.MONGO_CLUSTER_HOSTNAME }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          AWS_SES_SENDER_EMAIL: ${{ secrets.AWS_SES_SENDER_EMAIL }}
+          IMAGE_REPO: ${{ secrets.IMAGE_REPO }}
+          APP_ROLE_ARN: ${{ secrets.APP_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          echo "Deploying $APP_NAME to environment '${{ job.environment }}'"
+
+          # Create or update Lambda configuration
+          if ! aws lambda get-function --function-name "$APP_NAME" >/dev/null 2>&1; then
+            aws lambda create-function \
+              --function-name "$APP_NAME" \
+              --package-type Image \
+              --code ImageUri="${IMAGE_REPO}:latest" \
+              --role "${APP_ROLE_ARN}" \
+              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY}}"
+          else
+            echo "Lambda function already exists. Updating configuration..."
+            aws lambda update-function-configuration \
+              --function-name "$APP_NAME" \
+              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY}}"
+          fi
+
+          # Configure Lambda Log Retention to 7 days
+          aws logs put-retention-policy \
+            --log-group-name "/aws/lambda/${APP_NAME}" \
+            --retention-in-days 7
+
+      - name: Create Lambda URL (idempotent)
+        run: |
+          set -euo pipefail
+
+          # Create URL config only if it doesn't exist
+          if ! aws lambda get-function-url-config --function-name "$APP_NAME" >/dev/null 2>&1; then
+            aws lambda create-function-url-config \
+              --function-name "$APP_NAME" \
+              --auth-type NONE
+          else
+            echo "Lambda function URL already exists."
+          fi

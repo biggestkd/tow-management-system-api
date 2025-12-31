@@ -30,8 +30,8 @@ This structure enables a clear separation of concerns and supports modular devel
 1. Ensure that all dependencies are working (MongoDB)
 2. Set environment variables.
 ```bash
-MONGO_DB_USER="" # find in atlas console
-MONGO_DB_PASSWORD="" # find in atlas console
+MONGO_DB_USER="" # find in atlas console, for local run only
+MONGO_DB_PASSWORD="" # find in atlas console, for local run only
 MONGO_CLUSTER_HOSTNAME="" # find in atlas console
 APP_NAME="tow-management-system-api"
 ENVIRONMENT="local" # or dev/prod
