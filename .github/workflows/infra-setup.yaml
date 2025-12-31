@@ -39,6 +39,28 @@ jobs:
           role-to-assume: ${{ secrets.GHA_RUNNER_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Create Lambda Log Group and Set Retention
+        run: |
+          set -euo pipefail
+
+          LOG_GROUP="/aws/lambda/${APP_NAME}"
+
+          # Create log group if it does not exist
+          if ! aws logs describe-log-groups \
+            --log-group-name-prefix "$LOG_GROUP" \
+            --query "logGroups[?logGroupName=='$LOG_GROUP'].logGroupName" \
+            --output text | grep -q "$LOG_GROUP"; then
+            aws logs create-log-group \
+              --log-group-name "$LOG_GROUP"
+          else
+            echo "Log group already exists: $LOG_GROUP"
+          fi
+
+          # Set retention policy
+          aws logs put-retention-policy \
+            --log-group-name "$LOG_GROUP" \
+            --retention-in-days 7
+
       - name: Setup Lambda
         env:
           MONGO_CLUSTER_HOSTNAME: ${{ secrets.MONGO_CLUSTER_HOSTNAME }}
@@ -65,11 +87,6 @@ jobs:
               --function-name "$APP_NAME" \
               --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY}}"
           fi
-
-          # Configure Lambda Log Retention to 7 days
-          aws logs put-retention-policy \
-            --log-group-name "/aws/lambda/${APP_NAME}" \
-            --retention-in-days 7
 
       - name: Create Lambda URL (idempotent)
         run: |
