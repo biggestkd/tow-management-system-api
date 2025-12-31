@@ -100,3 +100,39 @@ jobs:
           else
             echo "Lambda function URL already exists."
           fi
+
+      - name: Add Lambda Function URL Permissions
+        run: |
+          set -euo pipefail
+
+          FUNCTION_NAME="${APP_NAME}"
+
+          # Fetch existing policy (may not exist yet)
+          POLICY_JSON=$(aws lambda get-policy \
+            --function-name "$FUNCTION_NAME" \
+            --query 'Policy' \
+            --output text 2>/dev/null || echo "")
+
+          # Permission 1: Allow public invocation via Function URL
+          if ! echo "$POLICY_JSON" | grep -q "UrlPolicyInvokeURL"; then
+            aws lambda add-permission \
+              --function-name "$FUNCTION_NAME" \
+              --statement-id UrlPolicyInvokeURL \
+              --action lambda:InvokeFunctionUrl \
+              --principal "*" \
+              --function-url-auth-type NONE
+          else
+            echo "Permission UrlPolicyInvokeURL already exists"
+          fi
+
+          # Permission 2: Allow InvokeFunction via Function URL
+          if ! echo "$POLICY_JSON" | grep -q "UrlPolicyInvokeFunction"; then
+            aws lambda add-permission \
+              --function-name "$FUNCTION_NAME" \
+              --statement-id UrlPolicyInvokeFunction \
+              --action lambda:InvokeFunction \
+              --principal "*" \
+              --invoked-via-function-url
+          else
+            echo "Permission UrlPolicyInvokeFunction already exists"
+          fi
