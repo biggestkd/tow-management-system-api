@@ -4,8 +4,17 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: false
+        default: "development"
+        type: choice
+        options:
+          - development
+          - qa
+          - prod
 
 permissions:
   id-token: write
@@ -13,32 +22,47 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: 915992498748.dkr.ecr.us-east-1.amazonaws.com/car-management-tool-api
-  IMAGE_TAG: latest
+  APP_NAME: tow-management-system-api
+  IMAGE_TAG: ${{ github.sha }}
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # Default to development for merges/pushes to main.
+    # Allow override when manually dispatched.
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.GHA_RUNNER_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and Push Docker Image
+        env:
+          IMAGE_REPO: ${{ secrets.IMAGE_REPO }}
         run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REPOSITORY:$IMAGE_TAG
+          set -euo pipefail
+          docker build -t "${IMAGE_REPO}:${IMAGE_TAG}" .
+          docker push "${IMAGE_REPO}:${IMAGE_TAG}"
 
       - name: Update Lambda Container Image
+        env:
+          IMAGE_REPO: ${{ secrets.IMAGE_REPO }}
         run: |
+          set -euo pipefail
           aws lambda update-function-code \
-            --function-name car-management-tool-api \
-            --image-uri $ECR_REPOSITORY:$IMAGE_TAG
+            --function-name "${APP_NAME}" \
+            --image-uri "${IMAGE_REPO}:${IMAGE_TAG}"
