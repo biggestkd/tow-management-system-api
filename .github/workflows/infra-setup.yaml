@@ -82,12 +82,12 @@ jobs:
               --code ImageUri="${IMAGE_REPO}:latest" \
               --role "${APP_ROLE_ARN}" \
               --timeout 30 \
-              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY},ENVIRONMENT=${ENVIRONMENT}}"
+              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY},ENVIRONMENT=${ENVIRONMENT}}" >/dev/null
           else
             echo "Lambda function already exists. Updating configuration..."
             aws lambda update-function-configuration \
               --function-name "$APP_NAME" \
-              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY}}"
+              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY},ENVIRONMENT=${ENVIRONMENT}}" >/dev/null
           fi
 
       - name: Create Lambda URL (idempotent)
