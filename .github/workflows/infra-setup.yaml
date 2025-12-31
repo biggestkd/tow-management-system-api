@@ -68,10 +68,11 @@ jobs:
           AWS_SES_SENDER_EMAIL: ${{ secrets.AWS_SES_SENDER_EMAIL }}
           IMAGE_REPO: ${{ secrets.IMAGE_REPO }}
           APP_ROLE_ARN: ${{ secrets.APP_ROLE_ARN }}
+          ENVIRONMENT: ${{ job.environment }}
         run: |
           set -euo pipefail
 
-          echo "Deploying $APP_NAME to environment '${{ job.environment }}'"
+          echo "Deploying $APP_NAME to environment $ENVIRONMENT"
 
           # Create or update Lambda configuration
           if ! aws lambda get-function --function-name "$APP_NAME" >/dev/null 2>&1; then
@@ -80,7 +81,8 @@ jobs:
               --package-type Image \
               --code ImageUri="${IMAGE_REPO}:latest" \
               --role "${APP_ROLE_ARN}" \
-              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY}}"
+              --timeout 30 \
+              --environment "Variables={MONGO_CLUSTER_HOSTNAME=${MONGO_CLUSTER_HOSTNAME},APP_NAME=${APP_NAME},AWS_SES_SENDER_EMAIL=${AWS_SES_SENDER_EMAIL},STRIPE_API_KEY=${STRIPE_API_KEY},ENVIRONMENT=${STRIPE_API_KEY}}"
           else
             echo "Lambda function already exists. Updating configuration..."
             aws lambda update-function-configuration \
