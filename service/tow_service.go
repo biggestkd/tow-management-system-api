@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"time"
@@ -46,20 +45,31 @@ func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService
 }
 
 // ScheduleTow calculates pricing, creates a payable invoice, persists the tow, and returns the saved entity.
-func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*model.Tow, error) {
+func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow, schedulingLink string) (*model.Tow, error) {
 	if towRequest == nil {
 		return nil, fmt.Errorf("tow request is required")
 	}
 
-	if towRequest.CompanyID == nil || *towRequest.CompanyID == "" {
-		return nil, fmt.Errorf("company id is required")
+	if schedulingLink == "" {
+		return nil, fmt.Errorf("schedulingLink is required")
+	}
+
+	// Fetch company information
+	companies, err := s.companyRepository.Find(ctx, &model.Company{
+		SchedulingLink: &schedulingLink,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch company: %w", err)
+	}
+	if len(companies) == 0 {
+		return nil, fmt.Errorf("company not found")
 	}
 
 	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
-		CompanyID: towRequest.CompanyID,
+		CompanyID: companies[0].ID,
 	})
 
-	log.Println(*towRequest.CompanyID)
+	towRequest.CompanyID = companies[0].ID
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pricing information: %w", err)

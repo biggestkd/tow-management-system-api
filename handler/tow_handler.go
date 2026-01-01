@@ -11,7 +11,7 @@ import (
 
 // TowService defines the contract for Tow-related business logic.
 type TowService interface {
-	ScheduleTow(ctx context.Context, towRequest *model.Tow) (*model.Tow, error)
+	ScheduleTow(ctx context.Context, towRequest *model.Tow, schedulingLink string) (*model.Tow, error)
 	FindTowsByCompanyId(ctx context.Context, companyId string) ([]*model.Tow, error)
 	UpdateTow(ctx context.Context, towId string, update *model.Tow) error
 	GetEstimate(ctx context.Context, companyId string, pickup string, dropoff string) (int64, error)
@@ -52,21 +52,23 @@ func (h *TowHandler) GetTowHistory(c *gin.Context) {
 // Request: Tow payload in JSON body
 // Response: 201 [Tow] | 400/404/500 generic error text
 func (h *TowHandler) PostTow(c *gin.Context) {
-	companyId := c.Param("companyId")
-	if companyId == "" {
-		c.String(http.StatusBadRequest, "company id is required")
+	schedulingLink := c.Param("schedulingLink")
+	if schedulingLink == "" {
+		message := "schedulingLink is required"
+		log.Println(message)
+		c.String(http.StatusBadRequest, message)
 		return
 	}
 
 	var towBody model.Tow
 	if err := c.ShouldBindJSON(&towBody); err != nil {
-		c.String(http.StatusBadRequest, "invalid JSON towBody")
+		message := "invalid JSON towBody"
+		log.Println(message)
+		c.String(http.StatusBadRequest, message)
 		return
 	}
 
-	towBody.CompanyID = &companyId
-
-	tow, err := h.towService.ScheduleTow(c.Request.Context(), &towBody)
+	tow, err := h.towService.ScheduleTow(c.Request.Context(), &towBody, schedulingLink)
 	if err != nil {
 		log.Println(err.Error())
 		c.String(http.StatusBadRequest, "something went wrong")

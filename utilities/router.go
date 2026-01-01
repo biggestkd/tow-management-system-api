@@ -65,7 +65,7 @@ func (r *Router) InitializeRouter() *gin.Engine {
 
 	// ==== Tow routes ====
 	engine.GET("/tows/company/:companyId", r.towHandler.GetTowHistory) // Get tow history
-	engine.POST("/tows/:companyId", r.towHandler.PostTow)              // Create tow
+	engine.POST("/tows/:schedulingLink", r.towHandler.PostTow)         // Create tow
 	engine.PUT("/tows/:towId", r.towHandler.PutUpdateTow)              // Update tow
 	engine.GET("/tows/estimates", r.towHandler.GetEstimate)            // Get price estimate
 
