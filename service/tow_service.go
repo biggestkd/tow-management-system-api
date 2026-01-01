@@ -173,8 +173,8 @@ func (s *TowService) UpdateTow(ctx context.Context, towId string, update *model.
 }
 
 // GetEstimate calculates and returns a price estimate for a tow request without creating a tow or payment reference.
-func (s *TowService) GetEstimate(ctx context.Context, companyId string, pickup string, dropoff string) (int64, error) {
-	if companyId == "" {
+func (s *TowService) GetEstimate(ctx context.Context, companySchedulingLink string, pickup string, dropoff string) (int64, error) {
+	if companySchedulingLink == "" {
 		return 0, fmt.Errorf("company id is required")
 	}
 	if pickup == "" {
@@ -184,9 +184,20 @@ func (s *TowService) GetEstimate(ctx context.Context, companyId string, pickup s
 		return 0, fmt.Errorf("dropoff is required")
 	}
 
+	// Fetch company information
+	companies, err := s.companyRepository.Find(ctx, &model.Company{
+		SchedulingLink: &companySchedulingLink,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch company: %w", err)
+	}
+	if len(companies) == 0 {
+		return 0, fmt.Errorf("company not found")
+	}
+
 	// load prices
 	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
-		CompanyID: &companyId,
+		CompanyID: companies[0].ID,
 	})
 
 	if err != nil {
