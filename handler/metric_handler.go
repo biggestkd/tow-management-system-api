@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"tow-management-system-api/model"
 
@@ -42,6 +43,7 @@ func (h *MetricHandler) GetCompanyMetrics(c *gin.Context) {
 
 	metrics, err := h.metricService.CalculateMetrics(c.Request.Context(), companyId)
 	if err != nil {
+		log.Println(err.Error())
 		c.String(http.StatusInternalServerError, "something went wrong")
 		return
 	}

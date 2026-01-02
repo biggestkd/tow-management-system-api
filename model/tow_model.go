@@ -1,10 +1,18 @@
 package model
 
+type Vehicle struct {
+	Year        *string `json:"year,omitempty" bson:"year,omitempty"`
+	Make        *string `json:"make,omitempty" bson:"make,omitempty"`
+	Model       *string `json:"model,omitempty" bson:"model,omitempty"`
+	State       *string `json:"state,omitempty" bson:"state,omitempty"`
+	PlateNumber *string `json:"plateNumber,omitempty" bson:"plateNumber,omitempty"`
+}
+
 type Tow struct {
 	ID               *string  `json:"id,omitempty" bson:"_id,omitempty"`
 	Destination      *string  `json:"destination,omitempty" bson:"destination,omitempty"`
 	Pickup           *string  `json:"pickup,omitempty" bson:"pickup,omitempty"`
-	Vehicle          *string  `json:"vehicle,omitempty" bson:"vehicle,omitempty"`
+	Vehicle          *Vehicle `json:"vehicle,omitempty" bson:"vehicle,omitempty"`
 	PrimaryContact   *string  `json:"primaryContact,omitempty" bson:"primaryContact,omitempty"`
 	Attachments      []string `json:"attachments,omitempty" bson:"attachments,omitempty"`
 	Notes            *string  `json:"notes,omitempty" bson:"notes,omitempty"`
