@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"time"
@@ -46,20 +45,31 @@ func NewTowService(towRepo TowRepository, priceRepo PriceRepositoryForTowService
 }
 
 // ScheduleTow calculates pricing, creates a payable invoice, persists the tow, and returns the saved entity.
-func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*model.Tow, error) {
+func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow, schedulingLink string) (*model.Tow, error) {
 	if towRequest == nil {
 		return nil, fmt.Errorf("tow request is required")
 	}
 
-	if towRequest.CompanyID == nil || *towRequest.CompanyID == "" {
-		return nil, fmt.Errorf("company id is required")
+	if schedulingLink == "" {
+		return nil, fmt.Errorf("schedulingLink is required")
+	}
+
+	// Fetch company information
+	companies, err := s.companyRepository.Find(ctx, &model.Company{
+		SchedulingLink: &schedulingLink,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch company: %w", err)
+	}
+	if len(companies) == 0 {
+		return nil, fmt.Errorf("company not found")
 	}
 
 	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
-		CompanyID: towRequest.CompanyID,
+		CompanyID: companies[0].ID,
 	})
 
-	log.Println(*towRequest.CompanyID)
+	towRequest.CompanyID = companies[0].ID
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pricing information: %w", err)
@@ -120,6 +130,9 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 	towRequest.CreatedAt = &now
 	id := uuid.NewString()
 	towRequest.ID = &id
+	// TODO: update the status to check if the requestor was a driver or company
+	status := "ACCEPTED"
+	towRequest.Status = &status
 
 	if err := s.towRepository.Create(ctx, towRequest); err != nil {
 		return nil, fmt.Errorf("failed to save tow: %w", err)
@@ -131,7 +144,7 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow) (*m
 	}
 
 	subject := "Service Confirmation – Complete Your Payment"
-	err = s.emailUtility.SendEmail(ctx, *towRequest.PrimaryContact, subject, emailContent)
+	err = s.emailUtility.SendEmail(ctx, *towRequest.PrimaryContact.Email, subject, emailContent)
 
 	if err != nil {
 		return nil, err
@@ -173,8 +186,8 @@ func (s *TowService) UpdateTow(ctx context.Context, towId string, update *model.
 }
 
 // GetEstimate calculates and returns a price estimate for a tow request without creating a tow or payment reference.
-func (s *TowService) GetEstimate(ctx context.Context, companyId string, pickup string, dropoff string) (int64, error) {
-	if companyId == "" {
+func (s *TowService) GetEstimate(ctx context.Context, companySchedulingLink string, pickup string, dropoff string) (int64, error) {
+	if companySchedulingLink == "" {
 		return 0, fmt.Errorf("company id is required")
 	}
 	if pickup == "" {
@@ -184,9 +197,20 @@ func (s *TowService) GetEstimate(ctx context.Context, companyId string, pickup s
 		return 0, fmt.Errorf("dropoff is required")
 	}
 
+	// Fetch company information
+	companies, err := s.companyRepository.Find(ctx, &model.Company{
+		SchedulingLink: &companySchedulingLink,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch company: %w", err)
+	}
+	if len(companies) == 0 {
+		return 0, fmt.Errorf("company not found")
+	}
+
 	// load prices
 	pricingInfo, err := s.priceRepository.Find(ctx, &model.Price{
-		CompanyID: &companyId,
+		CompanyID: companies[0].ID,
 	})
 
 	if err != nil {
@@ -243,7 +267,7 @@ func (s *TowService) formatPaymentEmail(ctx context.Context, towRequest *model.T
 	if towRequest.CompanyID == nil || *towRequest.CompanyID == "" {
 		return "", fmt.Errorf("company id is required")
 	}
-	if towRequest.PrimaryContact == nil || *towRequest.PrimaryContact == "" {
+	if towRequest.PrimaryContact == nil || towRequest.PrimaryContact.Email == nil || *towRequest.PrimaryContact.Email == "" {
 		return "", fmt.Errorf("primary contact is required")
 	}
 	if towRequest.CheckoutUrl == nil || *towRequest.CheckoutUrl == "" {

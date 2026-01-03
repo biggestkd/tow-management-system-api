@@ -41,10 +41,13 @@ func (r *Router) InitializeRouter() *gin.Engine {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-User-Id")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusOK)
 			return
 		}
+
+		c.Next()
 	})
 
 	// Health
@@ -62,7 +65,7 @@ func (r *Router) InitializeRouter() *gin.Engine {
 
 	// ==== Tow routes ====
 	engine.GET("/tows/company/:companyId", r.towHandler.GetTowHistory) // Get tow history
-	engine.POST("/tows/:companyId", r.towHandler.PostTow)              // Create tow
+	engine.POST("/tows/:schedulingLink", r.towHandler.PostTow)         // Create tow
 	engine.PUT("/tows/:towId", r.towHandler.PutUpdateTow)              // Update tow
 	engine.GET("/tows/estimates", r.towHandler.GetEstimate)            // Get price estimate
 

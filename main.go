@@ -17,7 +17,7 @@ import (
 	"tow-management-system-api/utilities"
 )
 
-var ginLambda *ginadapter.GinLambda
+var ginLambda *ginadapter.GinLambdaV2
 
 // buildApp composes the full dependency graph and returns a ready gin.Engine.
 func buildApp() (*gin.Engine, error) {
@@ -108,11 +108,11 @@ func main() {
 	}
 
 	// LAMBDA RUNTIME
-	ginLambda = ginadapter.New(engine)
+	ginLambda = ginadapter.NewV2(engine)
 	log.Println("[lambda] handler is ready")
 	lambda.Start(Handler)
 }
 
-func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	return ginLambda.ProxyWithContext(ctx, req)
 }
