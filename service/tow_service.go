@@ -130,6 +130,9 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow, sch
 	towRequest.CreatedAt = &now
 	id := uuid.NewString()
 	towRequest.ID = &id
+	// TODO: update the status to check if the requestor was a driver or company
+	status := "ACCEPTED"
+	towRequest.Status = &status
 
 	if err := s.towRepository.Create(ctx, towRequest); err != nil {
 		return nil, fmt.Errorf("failed to save tow: %w", err)
@@ -141,7 +144,7 @@ func (s *TowService) ScheduleTow(ctx context.Context, towRequest *model.Tow, sch
 	}
 
 	subject := "Service Confirmation – Complete Your Payment"
-	err = s.emailUtility.SendEmail(ctx, *towRequest.PrimaryContact, subject, emailContent)
+	err = s.emailUtility.SendEmail(ctx, *towRequest.PrimaryContact.Email, subject, emailContent)
 
 	if err != nil {
 		return nil, err
@@ -264,7 +267,7 @@ func (s *TowService) formatPaymentEmail(ctx context.Context, towRequest *model.T
 	if towRequest.CompanyID == nil || *towRequest.CompanyID == "" {
 		return "", fmt.Errorf("company id is required")
 	}
-	if towRequest.PrimaryContact == nil || *towRequest.PrimaryContact == "" {
+	if towRequest.PrimaryContact == nil || towRequest.PrimaryContact.Email == nil || *towRequest.PrimaryContact.Email == "" {
 		return "", fmt.Errorf("primary contact is required")
 	}
 	if towRequest.CheckoutUrl == nil || *towRequest.CheckoutUrl == "" {
