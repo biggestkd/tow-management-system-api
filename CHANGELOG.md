@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.9.0
+* Update database name
+
 ## 0.8.0
 * Create Stripe webhook endpoint
 * Update Tow model

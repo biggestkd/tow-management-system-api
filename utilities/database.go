@@ -48,7 +48,7 @@ func NewDatabaseConnection() (*Database, error) {
 		return nil, fmt.Errorf("mongo connect error: %w", err)
 	}
 
-	db := client.Database("tow-management-system")
+	db := client.Database("tow_operations")
 
 	return &Database{
 		client: client,
