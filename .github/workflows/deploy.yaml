@@ -13,8 +13,7 @@ on:
         type: choice
         options:
           - development
-          - qa
-          - prod
+          - production
 
 permissions:
   id-token: write
