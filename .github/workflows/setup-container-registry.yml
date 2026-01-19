@@ -78,51 +78,6 @@ jobs:
             echo "ECR repository '$REPO_NAME' created successfully"
           fi
 
-      - name: Set Repository Policy for Lambda Image Retrieval
-        run: |
-          set -euo pipefail
-          
-          REPO_NAME="${APP_NAME}"
-          ACCOUNT_ID="${{ steps.account-id.outputs.account_id }}"
-          REPO_ARN="arn:aws:ecr:${AWS_REGION}:${ACCOUNT_ID}:repository/${REPO_NAME}"
-          
-          # LambdaECRImageRetrievalPolicy - Repository policy to allow Lambda to retrieve images
-          REPOSITORY_POLICY='{
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "LambdaECRImageRetrievalPolicy",
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "lambda.amazonaws.com"
-                },
-                "Action": [
-                  "ecr:GetDownloadUrlForLayer",
-                  "ecr:BatchGetImage",
-                  "ecr:BatchCheckLayerAvailability"
-                ],
-                "Resource": "'"${REPO_ARN}"'"
-              },
-              {
-                "Sid": "LambdaECRAuthorization",
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "lambda.amazonaws.com"
-                },
-                "Action": "ecr:GetAuthorizationToken",
-                "Resource": "*"
-              }
-            ]
-          }'
-          
-          echo "Setting repository policy for Lambda image retrieval..."
-          aws ecr set-repository-policy \
-            --repository-name "$REPO_NAME" \
-            --policy-text "$REPOSITORY_POLICY" \
-            --region "${AWS_REGION}"
-          
-          echo "Repository policy set successfully"
-
       - name: Verify ECR Repository Configuration
         run: |
           set -euo pipefail
@@ -143,11 +98,3 @@ jobs:
             --region "${AWS_REGION}" \
             --query "repositories[0].{ImageTagMutability:imageTagMutability,ExclusionFilters:imageTagMutabilityExclusionFilters}" \
             --output json
-          
-          echo ""
-          echo "=== Repository Policy ==="
-          aws ecr get-repository-policy \
-            --repository-name "$REPO_NAME" \
-            --region "${AWS_REGION}" \
-            --query "policyText" \
-            --output text | jq '.' || echo "Policy retrieved successfully"
