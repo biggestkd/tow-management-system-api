@@ -29,6 +29,9 @@ jobs:
     # If manual run, use the chosen env; otherwise default to development (e.g., merges to main).
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
 
+    env:
+      ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'development' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,7 +71,7 @@ jobs:
           AWS_SES_SENDER_EMAIL: ${{ secrets.AWS_SES_SENDER_EMAIL }}
           IMAGE_REPO: ${{ secrets.IMAGE_REPO }}
           APP_ROLE_ARN: ${{ secrets.APP_ROLE_ARN }}
-          ENVIRONMENT: ${{ job.environment }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
         run: |
           set -euo pipefail
 
