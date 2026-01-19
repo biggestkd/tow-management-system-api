@@ -137,6 +137,68 @@ jobs:
               --set-as-default
           fi
 
+      - name: Create tow-management-system-api role
+        run: |
+          ROLE_NAME="tow-management-system-api"
+          
+          # Get AWS account ID
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          
+          # Get ARNs of customer-managed policies
+          LOCATION_POLICY_ARN=$(aws iam list-policies --query "Policies[?PolicyName=='lambda-location-full-access-policy'].Arn" --output text)
+          SES_POLICY_ARN=$(aws iam list-policies --query "Policies[?PolicyName=='lambda-ses-sendrawemail-policy'].Arn" --output text)
+          
+          # Managed policy ARN
+          LAMBDA_BASIC_EXECUTION_ROLE_ARN="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          
+          # Trust policy for Lambda service
+          TRUST_POLICY='{
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }'
+          
+          # Check if role already exists
+          if aws iam get-role --role-name "$ROLE_NAME" &>/dev/null; then
+            echo "Role $ROLE_NAME already exists"
+            echo "Updating trust policy..."
+            aws iam update-assume-role-policy \
+              --role-name "$ROLE_NAME" \
+              --policy-document "$TRUST_POLICY"
+          else
+            echo "Creating role: $ROLE_NAME"
+            aws iam create-role \
+              --role-name "$ROLE_NAME" \
+              --assume-role-policy-document "$TRUST_POLICY" \
+              --description "IAM role for tow-management-system-api Lambda function"
+          fi
+          
+          # Attach managed policy
+          echo "Attaching AWSLambdaBasicExecutionRole..."
+          aws iam attach-role-policy \
+            --role-name "$ROLE_NAME" \
+            --policy-arn "$LAMBDA_BASIC_EXECUTION_ROLE_ARN" || echo "Policy already attached or failed to attach"
+          
+          # Attach customer-managed policies
+          echo "Attaching lambda-location-full-access-policy..."
+          aws iam attach-role-policy \
+            --role-name "$ROLE_NAME" \
+            --policy-arn "$LOCATION_POLICY_ARN" || echo "Policy already attached or failed to attach"
+          
+          echo "Attaching lambda-ses-sendrawemail-policy..."
+          aws iam attach-role-policy \
+            --role-name "$ROLE_NAME" \
+            --policy-arn "$SES_POLICY_ARN" || echo "Policy already attached or failed to attach"
+          
+          echo "Role $ROLE_NAME created/updated successfully"
+
       - name: List created policies
         run: |
           echo "Created/Updated policies:"
