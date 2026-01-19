@@ -1,0 +1,144 @@
+name: Setup-Permissions
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (development/production)"
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  create-iam-policies:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'development' }}
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Display selected environment
+        run: |
+          ENV="${{ github.event.inputs.environment || 'development' }}"
+          echo "Running workflow for environment: $ENV"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_RUNNER_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create lambda-location-full-access-policy
+        run: |
+          POLICY_NAME="lambda-location-full-access-policy"
+          POLICY_DOCUMENT='{
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "VisualEditor0",
+                "Effect": "Allow",
+                "Action": [
+                  "geo:ListDevicePositions",
+                  "geo:GetDevicePosition",
+                  "geo:CalculateRoute",
+                  "geo-routes:*",
+                  "geo:DescribePlaceIndex",
+                  "geo:DescribeGeofenceCollection",
+                  "geo:SearchPlaceIndexForPosition",
+                  "geo:GetPlace",
+                  "geo:ListTrackerConsumers",
+                  "geo-places:*",
+                  "geo:*",
+                  "geo:GetMapTile",
+                  "geo:ForecastGeofenceEvents",
+                  "geo:SearchPlaceIndexForText",
+                  "geo:DescribeKey",
+                  "geo:VerifyDevicePosition",
+                  "geo:DescribeMap",
+                  "geo:BatchGetDevicePosition",
+                  "geo:GetMapGlyphs",
+                  "geo:ListTagsForResource",
+                  "geo:GetDevicePositionHistory",
+                  "geo:DescribeTracker",
+                  "geo:GetMapSprites",
+                  "geo:GetMapStyleDescriptor",
+                  "geo:CalculateRouteMatrix",
+                  "geo:ListGeofences",
+                  "geo:GetGeofence",
+                  "geo-maps:*",
+                  "geo:SearchPlaceIndexForSuggestions",
+                  "geo:DescribeRouteCalculator"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }'
+          
+          # Check if policy already exists
+          POLICY_ARN=$(aws iam list-policies --query "Policies[?PolicyName=='$POLICY_NAME'].Arn" --output text 2>/dev/null || echo "")
+          
+          if [ -z "$POLICY_ARN" ]; then
+            echo "Creating policy: $POLICY_NAME"
+            aws iam create-policy \
+              --policy-name "$POLICY_NAME" \
+              --policy-document "$POLICY_DOCUMENT" \
+              --description "Policy for Lambda function to access AWS Location services"
+          else
+            echo "Policy $POLICY_NAME already exists with ARN: $POLICY_ARN"
+            echo "Updating policy version..."
+            aws iam create-policy-version \
+              --policy-arn "$POLICY_ARN" \
+              --policy-document "$POLICY_DOCUMENT" \
+              --set-as-default
+          fi
+
+      - name: Create lambda-ses-sendrawemail-policy
+        run: |
+          POLICY_NAME="lambda-ses-sendrawemail-policy"
+          POLICY_DOCUMENT='{
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "SID1",
+                "Effect": "Allow",
+                "Action": "ses:SendEmail",
+                "Resource": "*"
+              },
+              {
+                "Sid": "SID2",
+                "Effect": "Allow",
+                "Action": "ses:SendRawEmail",
+                "Resource": "*"
+              }
+            ]
+          }'
+          
+          # Check if policy already exists
+          POLICY_ARN=$(aws iam list-policies --query "Policies[?PolicyName=='$POLICY_NAME'].Arn" --output text 2>/dev/null || echo "")
+          
+          if [ -z "$POLICY_ARN" ]; then
+            echo "Creating policy: $POLICY_NAME"
+            aws iam create-policy \
+              --policy-name "$POLICY_NAME" \
+              --policy-document "$POLICY_DOCUMENT" \
+              --description "Policy for Lambda function to send emails via SES"
+          else
+            echo "Policy $POLICY_NAME already exists with ARN: $POLICY_ARN"
+            echo "Updating policy version..."
+            aws iam create-policy-version \
+              --policy-arn "$POLICY_ARN" \
+              --policy-document "$POLICY_DOCUMENT" \
+              --set-as-default
+          fi
+
+      - name: List created policies
+        run: |
+          echo "Created/Updated policies:"
+          aws iam list-policies --query "Policies[?PolicyName=='lambda-location-full-access-policy' || PolicyName=='lambda-ses-sendrawemail-policy'].{Name:PolicyName,Arn:Arn}" --output table
+
