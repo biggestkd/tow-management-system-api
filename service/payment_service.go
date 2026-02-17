@@ -129,7 +129,7 @@ func (s *PaymentService) ProcessCheckoutSuccessEvent(ctx context.Context, event 
 
 	// Check if the event type begins with "checkout.session"
 	eventType := string(event.Type)
-	if !strings.HasPrefix(eventType, "checkout.session") {
+	if !strings.HasPrefix(eventType, "checkout.session.async_payment_succeeded") {
 		return fmt.Errorf("event type %s does not begin with 'checkout.session'", eventType)
 	}
 
